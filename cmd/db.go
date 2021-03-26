@@ -1,9 +1,16 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+	"text/tabwriter"
+	"time"
+
+	"code.cloudfoundry.org/bytefmt"
 	pgapi "github.com/flanksource/karina/pkg/api/postgres"
 	"github.com/flanksource/karina/pkg/client/postgres"
 	"github.com/flanksource/karina/pkg/phases/postgresoperator"
+	"github.com/hako/durafmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -138,6 +145,48 @@ func init() {
 			}
 		},
 	}
+
+	list := &cobra.Command{
+		Use:   "list",
+		Short: "List the backups",
+		Args:  cobra.MinimumNArgs(0),
+		Run: func(cmd *cobra.Command, args []string) {
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			num, _ := cmd.Flags().GetInt("number")
+
+			db, err := getDB(cmd)
+			if err != nil {
+				log.Fatalf("error finding %s: %v", clusterName, err)
+			}
+			list, err := db.ListBackups()
+			if err != nil {
+				fmt.Printf("Error getting list of backups %v ", err)
+				return
+			}
+			w := tabwriter.NewWriter(os.Stdout, 3, 2, 3, ' ', tabwriter.DiscardEmptyColumns)
+
+			if !quiet {
+				fmt.Fprintf(w, "URL\tAGE\tSIZE\t\n")
+			}
+			for idx, bi := range list {
+				if quiet {
+					fmt.Fprintf(w, "%s\n", bi.URL)
+				} else {
+					age := time.Since(bi.LastModified)
+					ageStr := durafmt.Parse(age).LimitFirstN(1).String()
+					size := bytefmt.ByteSize(uint64(bi.Size))
+					fmt.Fprintf(w, "%s\t%s\t%s\t\n", bi.URL, ageStr, size)
+				}
+				if num > 0 && idx+1 >= num {
+					break
+				}
+			}
+			_ = w.Flush()
+		},
+	}
+	list.Flags().BoolP("quiet", "q", false, "List only the path of the backup")
+	list.Flags().IntP("number", "n", 0, "Maximum number of backups to list")
+	backup.AddCommand(list)
 
 	backup.Flags().String("schedule", "", "A cron schedule to backup on a reoccuring basis")
 	DB.AddCommand(backup)

@@ -3,6 +3,7 @@ package postgres
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/flanksource/commons/utils"
 	minio "github.com/minio/minio-go/v6"
@@ -24,10 +25,11 @@ type PostgresDB struct {
 	Superuser string
 	op        *api.OperatorConfiguration
 	client    *kommons.Client
+	s3        *minio.Client
 }
 
 func GetGenericPostgresDB(client *kommons.Client, s3 *minio.Client, namespace, name, secret, version string) (*PostgresDB, error) {
-	db := PostgresDB{client: client}
+	db := PostgresDB{client: client, s3: s3}
 
 	op := api.OperatorConfiguration{TypeMeta: metav1.TypeMeta{
 		Kind:       "operatorconfiguration",
@@ -48,7 +50,7 @@ func GetGenericPostgresDB(client *kommons.Client, s3 *minio.Client, namespace, n
 }
 
 func GetPostgresDB(client *kommons.Client, s3 *minio.Client, name string) (*PostgresDB, error) {
-	db := PostgresDB{client: client}
+	db := PostgresDB{client: client, s3: s3}
 
 	_db := &api.Postgresql{TypeMeta: metav1.TypeMeta{
 		Kind:       "postgresql",
@@ -95,9 +97,26 @@ func (db *PostgresDB) ScheduleBackup(schedule string) error {
 	return db.client.Apply(db.Namespace, job)
 }
 
-func (db *PostgresDB) ListBackups() ([]string, error) {
-	var backups []string
-	return backups, nil
+type BackupItem struct {
+	URL          string
+	LastModified time.Time
+	Size         int64
+}
+
+func (db *PostgresDB) ListBackups() ([]*BackupItem, error) {
+	op := db.op.Configuration
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+
+	list := make([]*BackupItem, 0)
+
+	for o := range db.s3.ListObjectsV2(op.LogicalBackup.S3Bucket, db.Name, true, doneCh) {
+		url := fmt.Sprintf("s3://%s/%s", op.LogicalBackup.S3Bucket, o.Key)
+		bi := &BackupItem{URL: url, LastModified: o.LastModified, Size: o.Size}
+		list = append(list, bi)
+	}
+
+	return list, nil
 }
 
 func (db *PostgresDB) Restore(backup string) error {
