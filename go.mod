@@ -10,6 +10,7 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/flanksource/commons v1.5.6
 	github.com/flanksource/kommons v0.19.0
+	github.com/flanksource/kommons/testenv v0.0.0-20210628131214-7dac6b472d63
 	github.com/flanksource/konfigadm v0.11.0
 	github.com/flanksource/template-operator-library v0.1.6
 	github.com/go-logr/logr v0.3.0
@@ -31,6 +32,7 @@ require (
 	github.com/prometheus/common v0.10.0
 	github.com/sirupsen/logrus v1.7.1
 	github.com/spf13/cobra v1.1.1
+	github.com/stretchr/testify v1.6.1
 	github.com/thoas/go-funk v0.7.0
 	github.com/vbauerster/mpb/v5 v5.0.3
 	github.com/vmware/go-vmware-nsxt v0.0.0-20190201205556-16aa0443042d
@@ -41,7 +43,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	gopkg.in/flanksource/yaml.v3 v3.1.1
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.20.4
 	k8s.io/apimachinery v0.20.4
 	k8s.io/client-go v12.0.0+incompatible
